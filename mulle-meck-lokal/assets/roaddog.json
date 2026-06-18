@@ -1,0 +1,1 @@
+{"roaddog": [{"type": "atlasJSONHash", "key": "roaddog-sprites-0", "textureURL": "assets/roaddog-sprites-0.png", "atlasURL": "assets/roaddog-sprites-0.json", "atlasData": null}, {"type": "audiosprite", "key": "roaddog-audio", "urls": "assets/roaddog-audio.ogg", "jsonURL": "assets/roaddog-audio.json", "jsonData": null}]}

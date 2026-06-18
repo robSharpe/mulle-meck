@@ -1,0 +1,344 @@
+/* ============================================================
+   Mulle Meck – modern inramning
+   Spelet renderas i #player (640×480, skalas av Phaser SHOW_ALL).
+   Allt runtomkring är "chrome": topbar + overlays.
+   ============================================================ */
+
+:root {
+  --bg:        #0d1018;
+  --bg-2:      #141926;
+  --panel:     #1b2231;
+  --panel-2:   #222b3d;
+  --border:    #2c3650;
+  --text:      #eaeef6;
+  --muted:     #9aa6be;
+  --accent:    #5b8cff;
+  --accent-2:  #4a78e6;
+  --danger:    #ff5d6c;
+  --danger-2:  #e2475a;
+  --radius:    14px;
+  --shadow:    0 18px 50px rgba(0, 0, 0, 0.55);
+  --font:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #1b2740 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%);
+}
+
+body.modal-open { overflow: hidden; }
+
+/* ---------- Ram ---------- */
+#frame {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+#topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: rgba(13, 16, 24, 0.7);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+.brand-mark { font-size: 20px; }
+.brand-name em { color: var(--muted); font-style: normal; font-weight: 500; }
+
+.topbar-actions { display: flex; gap: 8px; }
+
+.chip {
+  font: 600 13px var(--font);
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+}
+.chip:hover { background: var(--panel-2); border-color: #3a4766; }
+.chip:active { transform: translateY(1px); }
+
+/* ---------- Spelyta ---------- */
+#stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+#player {
+  position: relative;          /* krävs: spelet absolut-positionerar namn-/chattfält i #player */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#player canvas {
+  display: block;
+  margin: auto;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+/* Spelets egna muspekare – får inte ändras */
+#player canvas.C_Standard { cursor: url(ui/default.png) 5 1, default; }
+#player canvas.C_Grab {
+  cursor: url(ui/grab.png) 13 10, grab;
+  cursor: url(ui/grab.png) 13 10, -webkit-grab; }
+#player canvas.C_Left      { cursor: url(ui/left.png) 0 5, pointer; }
+#player canvas.C_MoveLeft  { cursor: url(ui/drag_left.png) 20 17, w-resize; }
+#player canvas.C_Click     { cursor: url(ui/point.png) 1 1, pointer; }
+#player canvas.C_MoveIn    { cursor: url(ui/drag_forward.png) 15 16, n-resize; }
+#player canvas.C_Right     { cursor: url(ui/right.png) 27 5, pointer; }
+#player canvas.C_MoveRight { cursor: url(ui/drag_right.png) 16 15, e-resize; }
+
+/* Spelets namn-/chattfält (skapas i #player av bundlen) */
+.chatInput {
+  border: none;
+  font: 14px Arial;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  width: 180px; }
+.chatInput:focus { background: white; }
+
+/* ---------- Overlays / modaler ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 9, 16, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fade 0.15s ease;
+}
+.overlay.open { display: flex; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: pop 0.16s ease;
+}
+.modal-wide { max-width: 760px; }
+
+@keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.modal-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+
+.icon-btn {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.icon-btn:hover { background: #2c3650; color: var(--text); }
+
+.modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px;
+}
+.modal-foot {
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------- Inställningar: rader ---------- */
+.row-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.row-action:hover { background: var(--panel-2); border-color: var(--border); }
+.row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+}
+.row-icon { font-size: 20px; width: 24px; text-align: center; flex: 0 0 auto; }
+.row-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; }
+.row-text strong { font-weight: 600; font-size: 14px; }
+.row-text small { color: var(--muted); font-size: 12px; }
+
+.row-action.danger:hover { background: rgba(255, 93, 108, 0.12); border-color: rgba(255, 93, 108, 0.4); }
+.row-action.danger .row-text strong { color: var(--danger); }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 8px 4px; }
+
+/* Toggle-switch */
+.switch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease;
+}
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.switch.on { background: var(--accent); border-color: var(--accent); }
+.switch.on .knob { transform: translateX(20px); background: #fff; }
+
+/* ---------- Delshop ---------- */
+.shop-search {
+  margin-left: auto;
+  width: 200px;
+  max-width: 45vw;
+  font: 13px var(--font);
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+.shop-search:focus { outline: none; border-color: var(--accent); }
+.shop-search::placeholder { color: var(--muted); }
+.modal-head .shop-search + .icon-btn { margin-left: 0; }
+
+.shop-section { margin-bottom: 18px; }
+.shop-section h3 {
+  margin: 4px 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.shop-section h3 .count {
+  color: var(--accent);
+  background: rgba(91, 140, 255, 0.14);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: 600 13px var(--font);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.05s ease;
+}
+.shop-item:hover { background: #2a344b; border-color: var(--accent); }
+.shop-item:active { transform: translateY(1px); }
+.shop-item .item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-item .item-id { color: var(--muted); font-size: 11px; font-weight: 500; flex: 0 0 auto; }
+.shop-item.added { background: rgba(91, 140, 255, 0.18); border-color: var(--accent); }
+.shop-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--panel);
+}
+.shop-item:disabled:hover { border-color: var(--border); }
+
+.shop-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 40px 20px;
+  line-height: 1.6;
+}
+.shop-empty strong { color: var(--text); }
+
+/* ---------- Smågrejer ---------- */
+@media (max-width: 560px) {
+  .brand-name { font-size: 14px; }
+  .chip { padding: 7px 11px; }
+  .shop-search { width: 130px; }
+}

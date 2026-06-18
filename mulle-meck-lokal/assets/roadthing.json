@@ -1,0 +1,1 @@
+{"roadthing": [{"type": "atlasJSONHash", "key": "roadthing-sprites-0", "textureURL": "assets/roadthing-sprites-0.png", "atlasURL": "assets/roadthing-sprites-0.json", "atlasData": null}, {"type": "audiosprite", "key": "roadthing-audio", "urls": "assets/roadthing-audio.ogg", "jsonURL": "assets/roadthing-audio.json", "jsonData": null}]}

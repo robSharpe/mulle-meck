@@ -1,0 +1,7 @@
+<!doctype html>
+<html><head><meta charset="UTF-8"><title>Progress</title>
+<style>body{font-family:sans-serif;padding:2em;background:#1a1a2e;color:#eee}</style></head>
+<body><h2>Progress</h2><p>Framsteg sparas lokalt i webbläsarens localStorage under nyckeln <code>mulle_SaveData</code>.</p>
+<button onclick="var d=localStorage.getItem('mulle_SaveData');document.getElementById('out').textContent=d?JSON.stringify(JSON.parse(d),null,2):'(tomt)'">Visa spardata</button>
+<pre id="out" style="margin-top:1em;font-size:12px;white-space:pre-wrap"></pre>
+</body></html>

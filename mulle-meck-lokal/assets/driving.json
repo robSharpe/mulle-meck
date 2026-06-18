@@ -1,0 +1,1 @@
+{"driving": [{"type": "atlasJSONHash", "key": "driving-sprites-0", "textureURL": "assets/driving-sprites-0.png", "atlasURL": "assets/driving-sprites-0.json", "atlasData": null}, {"type": "audiosprite", "key": "driving-audio", "urls": "assets/driving-audio.ogg", "jsonURL": "assets/driving-audio.json", "jsonData": null}]}

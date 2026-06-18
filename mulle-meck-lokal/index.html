@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="sv">
+
+	<head>
+
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+		<title>Mulle Meck Bygger Bilar</title>
+
+		<script src="phaser.min.js"></script>
+		<script src="bundle.js"></script>
+
+		<link href="style.css" rel="stylesheet" />
+
+		<script>
+
+			window.addEventListener("DOMContentLoaded", function(e){
+				console.debug('Launch');
+
+				// Boot-scenen startar location.hash.substr(1) som scen. Om det
+				// inte finns någon sparfil men hashen pekar på en scen som kräver
+				// en användare (t.ex. #garage) kraschar create() i en loop vid
+				// varje omladdning. Saknas sparfil – tvinga start i menyn.
+				if (!window.localStorage.getItem("mulle_SaveData") && window.location.hash) {
+					history.replaceState(null, "", window.location.pathname + window.location.search);
+				}
+
+				window.game.setup();
+
+				// Gör laddningsfel synliga. Loadern i bundlen har ingen egen
+				// felhantering, så en saknad fil blir annars en tyst hängning vid
+				// scenbyte. Det här pekar ut exakt vilken fil som fallerar.
+				(function attachLoadDiagnostics(tries) {
+					var g = window.game;
+					if (g && g.load && g.load.onFileError) {
+						g.load.onFileError.add(function (key, file) {
+							console.error("[LADDNINGSFEL] kunde inte ladda:", key,
+								file && file.url ? "(" + file.url + ")" : "");
+						});
+					} else if (tries > 0) {
+						setTimeout(function () { attachLoadDiagnostics(tries - 1); }, 100);
+					}
+				})(50);
+
+				window.addEventListener("error", function (ev) {
+					console.error("[SPELFEL]", ev.message, "i scen:",
+						window.game && window.game.state && window.game.state.current);
+				});
+			});
+
+		</script>
+
+	</head>
+
+	<body>
+
+		<div id="frame">
+
+			<header id="topbar">
+				<div class="brand">
+					<span class="brand-mark">🔧</span>
+					<span class="brand-name">Mulle Meck <em>Bygger Bilar</em></span>
+				</div>
+				<nav class="topbar-actions">
+					<button type="button" class="chip" id="open-shop">🧰 Delshop</button>
+					<button type="button" class="chip" id="open-settings">⚙️ Inställningar</button>
+				</nav>
+			</header>
+
+			<main id="stage">
+				<div id="player"></div>
+			</main>
+
+		</div>
+
+		<!-- Garaget fyller den här raden med fuskknappar. Den hålls dold;
+		     delshoppen nedan läser knapparna och presenterar dem snyggt. -->
+		<div id="cheats" hidden aria-hidden="true"></div>
+
+		<!-- Inställningar -->
+		<div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+			<div class="modal">
+				<div class="modal-head">
+					<h2 id="settings-title">Inställningar</h2>
+					<button type="button" class="icon-btn" data-close aria-label="Stäng">✕</button>
+				</div>
+				<div class="modal-body">
+
+					<button type="button" class="row-action" id="act-fullscreen">
+						<span class="row-icon">⛶</span>
+						<span class="row-text"><strong>Helskärm</strong><small>Visa spelet i helskärm</small></span>
+					</button>
+
+					<button type="button" class="row-action" id="act-progress">
+						<span class="row-icon">💾</span>
+						<span class="row-text"><strong>Visa spardata</strong><small>Öppna dina sparade framsteg</small></span>
+					</button>
+
+					<button type="button" class="row-action" id="act-info">
+						<span class="row-icon">ℹ️</span>
+						<span class="row-text"><strong>Om spelet</strong><small>Information om den lokala kopian</small></span>
+					</button>
+
+					<div class="row-toggle">
+						<span class="row-icon">🐞</span>
+						<span class="row-text"><strong>Utvecklarläge</strong><small>Debug-överlägg och bil-teleport</small></span>
+						<button type="button" class="switch" id="act-debug" role="switch" aria-checked="false">
+							<span class="knob"></span>
+						</button>
+					</div>
+
+					<hr class="divider" />
+
+					<button type="button" class="row-action danger" id="act-wipe">
+						<span class="row-icon">🗑️</span>
+						<span class="row-text"><strong>Radera all spardata</strong><small>Nollställer alla profiler – kan inte ångras</small></span>
+					</button>
+
+				</div>
+			</div>
+		</div>
+
+		<!-- Delshop -->
+		<div class="overlay" id="shop-overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+			<div class="modal modal-wide">
+				<div class="modal-head">
+					<h2 id="shop-title">Delshop</h2>
+					<input type="search" id="shop-search" class="shop-search" placeholder="Sök del…" autocomplete="off" />
+					<button type="button" class="icon-btn" data-close aria-label="Stäng">✕</button>
+				</div>
+				<div class="modal-body" id="shop-body"></div>
+				<div class="modal-foot">
+					<span id="shop-hint">Klicka på en del för att lägga den i garaget.</span>
+				</div>
+			</div>
+		</div>
+
+		<script>
+		(function () {
+			"use strict";
+
+			/* ---------- Overlay-hantering (öppna/stäng/Esc/klick-utanför) ---------- */
+			function open(el)  { el.classList.add("open"); document.body.classList.add("modal-open"); }
+			function close(el) { el.classList.remove("open"); document.body.classList.remove("modal-open"); }
+			function closeAll(){ document.querySelectorAll(".overlay.open").forEach(close); }
+
+			document.querySelectorAll(".overlay").forEach(function (ov) {
+				ov.addEventListener("click", function (ev) {
+					if (ev.target === ov || ev.target.hasAttribute("data-close")) close(ov);
+				});
+			});
+			document.addEventListener("keydown", function (ev) {
+				if (ev.key === "Escape") closeAll();
+			});
+
+			/* ---------- Inställningar ---------- */
+			var settingsOverlay = document.getElementById("settings-overlay");
+			var debugSwitch     = document.getElementById("act-debug");
+
+			function gameReady() { return window.game && window.game.mulle; }
+
+			function syncDebug() {
+				var on = !!(gameReady() && window.game.mulle.debug);
+				debugSwitch.setAttribute("aria-checked", on ? "true" : "false");
+				debugSwitch.classList.toggle("on", on);
+			}
+
+			document.getElementById("open-settings").addEventListener("click", function () {
+				syncDebug();
+				open(settingsOverlay);
+			});
+
+			document.getElementById("act-fullscreen").addEventListener("click", function () {
+				if (window.game && window.game.scale) window.game.scale.startFullScreen();
+				close(settingsOverlay);
+			});
+			document.getElementById("act-progress").addEventListener("click", function () {
+				window.open("progress/", "_blank");
+			});
+			document.getElementById("act-info").addEventListener("click", function () {
+				window.open("info/", "_blank");
+			});
+			debugSwitch.addEventListener("click", function () {
+				if (!gameReady()) return;
+				window.game.mulle.debug = !window.game.mulle.debug;
+				syncDebug();
+			});
+			document.getElementById("act-wipe").addEventListener("click", function () {
+				if (confirm("Radera ALL spardata?\nAlla profiler nollställs och det går inte att ångra.")) {
+					window.localStorage.removeItem("mulle_SaveData");
+					close(settingsOverlay);
+					alert("Spardata raderad. Spelet startas om.");
+					location.reload();
+				}
+			});
+
+			/* ---------- Delshop ----------
+			   Garaget genererar en <button> per bildel i den dolda #cheats-raden
+			   (text: "(id) namn", med fungerande klick som spawnar delen).
+			   Shoppen läser dem live, grupperar och namnger om, och delegerar
+			   klicket till originalknappen. Ingen spel-logik dupliceras. */
+
+			var CATEGORIES = [
+				["chassi",  "Chassin & karosser"],
+				["motor",   "Motorer"],
+				["hjul",    "Hjul & däck"],
+				["styr",    "Styrning"],
+				["broms",   "Bromsar"],
+				["batteri", "Batterier"],
+				["tank",    "Bränsletank"],
+				["vaxel",   "Växellåda"],
+				["sate",    "Säten & möbler"],
+				["lampa",   "Lampor & elektronik"],
+				["dekor",   "Dekor & udda prylar"],
+				["ovrigt",  "Övriga delar"]
+			];
+
+			// id -> [renskrivet namn, kategori]
+			var PART_META = {
+				1:["Chassi","chassi"],
+				17:["Flygplan, fram","chassi"], 18:["Flygplan, mitt","chassi"],
+				19:["Chevy, fram","chassi"], 20:["Chevy, mitt","chassi"], 21:["Chevy, bak","chassi"],
+				22:["Traktor, fram","chassi"],
+				30:["Gul bil, fram","chassi"], 29:["Gul bil, mitt","chassi"], 23:["Gul bil, bak","chassi"],
+				24:["VW (blå), fram","chassi"],
+				25:["Racer, fram","chassi"], 27:["Racer, mitt","chassi"], 28:["Racer, bak","chassi"],
+				32:["Helikopter, fram","chassi"], 154:["Röd bil, fram","chassi"],
+				132:["Cykelram","chassi"], 33:["Traktorskopa","chassi"], 99:["Hästvagn","chassi"],
+
+				2:["Mopedmotor","motor"], 6:["Mellanmotor","motor"], 9:["V8-motor","motor"],
+				38:["Grön motor","motor"], 101:["Elmotor","motor"], 306:["Jetmotor","motor"],
+
+				47:["Lampdäck","hjul"], 53:["Trumdäck","hjul"], 96:["Trähjul","hjul"],
+				113:["Traktordäck","hjul"], 116:["Skottkärrshjul","hjul"], 303:["Vanliga däck","hjul"],
+				149:["Larvband","hjul"],
+
+				41:["Cykelstyre","styr"], 54:["Skeppsratt","styr"], 307:["Ratt","styr"],
+
+				104:["Bromsar","broms"], 150:["Bromsar (variant)","broms"],
+
+				48:["Mellanbatteri","batteri"], 107:["Svart batteri","batteri"],
+
+				55:["Stor bensintank","tank"],
+
+				133:["Grå växellåda","vaxel"],
+
+				12:["Röd stol","sate"], 100:["Trästol","sate"], 120:["Pinnstol","sate"],
+				129:["Grönrandig soffa","sate"], 134:["Vinfat","sate"], 137:["Badkar","sate"],
+
+				42:["Skrivbordslampa","lampa"], 130:["Vagnslyktor","lampa"], 65:["Ringklocka","lampa"],
+				64:["Instrumentbräda","lampa"], 146:["Telefonkiosk","lampa"],
+
+				5:["Balkong","dekor"], 13:["Lastbilsgrej","dekor"], 14:["Trälåda","dekor"],
+				26:["Växthus","dekor"], 31:["Skjul","dekor"], 35:["Biljett","dekor"],
+				43:["Gräsklippare","dekor"], 66:["Stänkskärm","dekor"], 162:["Mjölkkruka","dekor"],
+				155:["Tält","dekor"]
+			};
+
+			var shopOverlay = document.getElementById("shop-overlay");
+			var shopBody    = document.getElementById("shop-body");
+			var shopSearch  = document.getElementById("shop-search");
+			var shopHint    = document.getElementById("shop-hint");
+
+			// Läs garagets genererade fuskknappar live.
+			function readParts() {
+				var box = document.getElementById("cheats");
+				return Array.prototype.map.call(box.querySelectorAll("button"), function (btn) {
+					var m = btn.textContent.match(/^\((\d+)\)/);
+					var id = m ? parseInt(m[1], 10) : parseInt(btn.textContent, 10);
+					return { id: id, btn: btn, disabled: btn.disabled };
+				}).filter(function (p) { return !isNaN(p.id); });
+			}
+
+			function buildShop() {
+				var parts = readParts();
+				shopBody.innerHTML = "";
+
+				if (!parts.length) {
+					shopBody.innerHTML =
+						'<p class="shop-empty">Delshoppen är tillgänglig i <strong>garaget</strong>.' +
+						' Starta ett spel och gå in i verkstaden, så dyker alla delar upp här.</p>';
+					shopHint.textContent = "";
+					return;
+				}
+				shopHint.textContent = "Klicka på en del för att lägga den i garaget.";
+
+				// Gruppera per kategori
+				var groups = {};
+				parts.forEach(function (p) {
+					var meta = PART_META[p.id];
+					var cat  = meta ? meta[1] : "ovrigt";
+					(groups[cat] = groups[cat] || []).push(p);
+				});
+
+				CATEGORIES.forEach(function (catDef) {
+					var key = catDef[0], label = catDef[1];
+					var items = groups[key];
+					if (!items || !items.length) return;
+
+					var section = document.createElement("section");
+					section.className = "shop-section";
+					var h = document.createElement("h3");
+					h.textContent = label;
+					h.innerHTML += ' <span class="count">' + items.length + "</span>";
+					section.appendChild(h);
+
+					var grid = document.createElement("div");
+					grid.className = "shop-grid";
+
+					items.forEach(function (p) {
+						var meta = PART_META[p.id];
+						var name = meta ? meta[0] : ("Del #" + p.id);
+
+						var card = document.createElement("button");
+						card.type = "button";
+						card.className = "shop-item";
+						card.disabled = p.disabled;
+						card.dataset.search = name.toLowerCase();
+						card.innerHTML =
+							'<span class="item-name">' + name + "</span>" +
+							'<span class="item-id">#' + p.id + "</span>";
+
+						if (p.disabled) {
+							card.title = "Sitter redan på bilen";
+						} else {
+							card.addEventListener("click", function () {
+								p.btn.click();                 // delegera till garagets riktiga knapp
+								card.classList.add("added");
+								card.querySelector(".item-name").textContent = name + " ✓";
+								setTimeout(function () {
+									card.classList.remove("added");
+									card.querySelector(".item-name").textContent = name;
+								}, 900);
+							});
+						}
+						grid.appendChild(card);
+					});
+
+					section.appendChild(grid);
+					shopBody.appendChild(section);
+				});
+
+				applySearch();
+			}
+
+			function applySearch() {
+				var q = (shopSearch.value || "").trim().toLowerCase();
+				shopBody.querySelectorAll(".shop-section").forEach(function (sec) {
+					var any = false;
+					sec.querySelectorAll(".shop-item").forEach(function (item) {
+						var hit = !q || item.dataset.search.indexOf(q) !== -1;
+						item.style.display = hit ? "" : "none";
+						if (hit) any = true;
+					});
+					sec.style.display = any ? "" : "none";
+				});
+			}
+
+			document.getElementById("open-shop").addEventListener("click", function () {
+				buildShop();
+				open(shopOverlay);
+				shopSearch.focus();
+			});
+			shopSearch.addEventListener("input", applySearch);
+
+		})();
+		</script>
+
+	</body>
+
+</html>

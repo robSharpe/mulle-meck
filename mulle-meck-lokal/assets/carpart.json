@@ -1,0 +1,1 @@
+{"carpart": [{"type": "atlasJSONHash", "key": "carpart-sprites-0", "textureURL": "assets/carpart-sprites-0.png", "atlasURL": "assets/carpart-sprites-0.json", "atlasData": null}, {"type": "audiosprite", "key": "carpart-audio", "urls": "assets/carpart-audio.ogg", "jsonURL": "assets/carpart-audio.json", "jsonData": null}]}

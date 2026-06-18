@@ -1,0 +1,1 @@
+{"resources": ["assets/carpart-audio.ogg"], "spritemap": {"201": {"start": 0.0, "end": 1.675, "loop": false, "data": {"dirName": "84d001v0", "dirFile": "84.DXR", "dirNum": 201, "cue": [[2274, "silence"], [2874, "talk"], [28681, ""]]}}}}

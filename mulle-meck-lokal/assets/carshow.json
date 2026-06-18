@@ -1,0 +1,1 @@
+{"carshow": [{"type": "atlasJSONHash", "key": "carshow-sprites-0", "textureURL": "assets/carshow-sprites-0.png", "atlasURL": "assets/carshow-sprites-0.json", "atlasData": null}, {"type": "audiosprite", "key": "carshow-audio", "urls": "assets/carshow-audio.ogg", "jsonURL": "assets/carshow-audio.json", "jsonData": null}]}
