@@ -8,6 +8,15 @@
 
 		<title>Mulle Meck Bygger Bilar</title>
 
+		<!-- PWA: installbar app med hemskärms-ikon och helskärm -->
+		<link rel="manifest" href="manifest.webmanifest" />
+		<meta name="theme-color" content="#0d1018" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Mulle Meck" />
+		<link rel="apple-touch-icon" href="icons/icon-180.png" />
+
 		<script src="phaser.min.js"></script>
 		<script src="bundle.js"></script>
 
@@ -47,6 +56,12 @@
 					console.error("[SPELFEL]", ev.message, "i scen:",
 						window.game && window.game.state && window.game.state.current);
 				});
+
+				// PWA: registrera service worker för offline-stöd (endast på https,
+				// dvs. den publicerade sajten – inte lokal http-utveckling).
+				if (location.protocol === "https:" && "serviceWorker" in navigator) {
+					navigator.serviceWorker.register("sw.js").catch(function () {});
+				}
 			});
 
 		</script>
