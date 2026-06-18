@@ -9,11 +9,9 @@ lokalt och publiceras via GitHub Pages.
 
 ## 🎮 Spela online
 
-När GitHub Pages är aktiverat ligger spelet på:
+**▶️ https://robsharpe.github.io/mulle-meck/**
 
-**https://USERNAME.github.io/REPO/**
-
-*(URL:en uppdateras automatiskt här när repot är publicerat.)*
+Sajten uppdateras automatiskt vid varje push till `main`.
 
 ## 💻 Spela lokalt på Mac
 
