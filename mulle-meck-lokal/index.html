@@ -74,6 +74,9 @@
 
 		</div>
 
+		<!-- Visas bara i CSS-helskärmsläget (iPhone, där Fullscreen-API saknas) -->
+		<button type="button" class="chip exit-immersive" id="exit-immersive">✕ Avsluta helskärm</button>
+
 		<!-- Garaget fyller den här raden med fuskknappar. Den hålls dold;
 		     delshoppen nedan läser knapparna och presenterar dem snyggt. -->
 		<div id="cheats" hidden aria-hidden="true"></div>
@@ -154,6 +157,66 @@
 				if (ev.key === "Escape") closeAll();
 			});
 
+			/* ---------- Placera spelets DOM-fält rätt över canvasen ----------
+			   Spelet skapar namn-/chattfält och placerar dem i ospalade
+			   640×480-koordinater relativt #player. Men Phaser skalar och
+			   centrerar canvasen (SHOW_ALL), så fälten hamnar fel (utanför rutan
+			   till vänster). Vi läser fältets avsedda spelkoordinater och flyttar
+			   + skalar det så att det följer den skalade canvasen. */
+			var GAME_W = 640;
+			var playerEl = document.getElementById("player");
+
+			function placeInput(inp) {
+				var canvas = playerEl.querySelector("canvas");
+				if (!canvas) return;
+				// Spara fältets ursprungliga spelkoordinater första gången.
+				if (inp.dataset.gx === undefined) {
+					var L = parseFloat(inp.style.left), T = parseFloat(inp.style.top);
+					if (isNaN(L) || isNaN(T)) return; // fält utan left/top – rör inte
+					inp.dataset.gx = L;
+					inp.dataset.gy = T;
+				}
+				var cr = canvas.getBoundingClientRect();
+				var pr = playerEl.getBoundingClientRect();
+				var s = cr.width / GAME_W;
+				inp.style.left = (cr.left - pr.left + parseFloat(inp.dataset.gx) * s) + "px";
+				inp.style.top  = (cr.top  - pr.top  + parseFloat(inp.dataset.gy) * s) + "px";
+				inp.style.transformOrigin = "top left";
+				inp.style.transform = "scale(" + s + ")";
+			}
+
+			function repositionInputs() {
+				playerEl.querySelectorAll("input").forEach(placeInput);
+			}
+
+			// När spelet lägger till ett fält: placera det direkt + på följande
+			// frames (canvasens slutstorlek kan dröja en bit efter att fältet dyker upp).
+			new MutationObserver(function (muts) {
+				muts.forEach(function (m) {
+					Array.prototype.forEach.call(m.addedNodes, function (n) {
+						if (n.tagName !== "INPUT") return;
+						placeInput(n);
+						requestAnimationFrame(function () { placeInput(n); });
+						setTimeout(function () { placeInput(n); }, 200);
+					});
+				});
+			}).observe(playerEl, { childList: true });
+
+			// Canvasen skalas av Phaser (SHOW_ALL). Varje gång den ändrar storlek
+			// – initial settling, fönsterändring, helskärm – flytta om fälten.
+			(function watchCanvas(tries) {
+				var canvas = playerEl.querySelector("canvas");
+				if (canvas) {
+					if (window.ResizeObserver) new ResizeObserver(repositionInputs).observe(canvas);
+					return;
+				}
+				if (tries > 0) setTimeout(function () { watchCanvas(tries - 1); }, 100);
+			})(50);
+
+			window.addEventListener("resize", repositionInputs);
+			document.addEventListener("fullscreenchange", repositionInputs);
+			document.addEventListener("webkitfullscreenchange", repositionInputs);
+
 			/* ---------- Inställningar ---------- */
 			var settingsOverlay = document.getElementById("settings-overlay");
 			var debugSwitch     = document.getElementById("act-debug");
@@ -171,9 +234,26 @@
 				open(settingsOverlay);
 			});
 
+			// Helskärm: riktig Fullscreen-API där den stöds (Mac/iPad). iPhone-Safari
+			// saknar API:t helt – fall tillbaka på ett CSS-helskärmsläge istället.
+			function fullscreenSupported() {
+				return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+			}
+			function setImmersive(on) {
+				document.body.classList.toggle("immersive", on);
+				if (window.game && window.game.scale) window.game.scale.refresh();
+				setTimeout(repositionInputs, 60);
+			}
 			document.getElementById("act-fullscreen").addEventListener("click", function () {
-				if (window.game && window.game.scale) window.game.scale.startFullScreen();
 				close(settingsOverlay);
+				if (fullscreenSupported() && window.game && window.game.scale) {
+					window.game.scale.startFullScreen();
+				} else {
+					setImmersive(true);
+				}
+			});
+			document.getElementById("exit-immersive").addEventListener("click", function () {
+				setImmersive(false);
 			});
 			document.getElementById("act-progress").addEventListener("click", function () {
 				window.open("progress/", "_blank");

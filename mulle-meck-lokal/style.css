@@ -336,6 +336,19 @@ body.modal-open { overflow: hidden; }
 }
 .shop-empty strong { color: var(--text); }
 
+/* ---------- CSS-helskärm (iPhone-reserv när Fullscreen-API saknas) ---------- */
+.exit-immersive {
+  display: none;
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1100;
+  opacity: 0.85;
+}
+body.immersive #topbar { display: none; }
+body.immersive #stage { padding: 0; }
+body.immersive .exit-immersive { display: inline-flex; }
+
 /* ---------- Smågrejer ---------- */
 @media (max-width: 560px) {
   .brand-name { font-size: 14px; }
